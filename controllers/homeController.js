@@ -14,9 +14,18 @@ exports.createProject = async (req, res) => {
 
     const data = { ...req.body };
 
-    // ================= LOCATION - STORE AS STRING =================
-    if (data.location && typeof data.location === 'object') {
-      data.location = JSON.stringify(data.location);
+    // ================= LOCATION - HANDLE AS SEPARATE FIELDS =================
+    if (data.location) {
+      // Location is already a string from the form
+      data.location = data.location;
+    }
+    
+    // Handle latitude and longitude
+    if (data.latitude) {
+      data.latitude = parseFloat(data.latitude);
+    }
+    if (data.longitude) {
+      data.longitude = parseFloat(data.longitude);
     }
 
     // ================= SET DEFAULT VALUES =================
@@ -64,11 +73,9 @@ exports.createProject = async (req, res) => {
     await project.save();
     
     console.log("Project saved successfully with ID:", project.id);
-    console.log("Project Type:", project.projectType);
-    console.log("Total Houses:", project.totalHouse);
-    console.log("House Numbers count:", project.houseNumbers?.length || 0);
-    console.log("Images count:", project.images?.length || 0);
-    console.log("Floor Plans count:", project.floorPlans?.length || 0);
+    console.log("Location:", project.location);
+    console.log("Latitude:", project.latitude);
+    console.log("Longitude:", project.longitude);
 
     res.status(201).json({
       success: true,
@@ -134,7 +141,7 @@ exports.getProject = async (req, res) => {
 };
 
 // ==============================
-// UPDATE PROJECT - FIXED WITH PROPER IMAGE HANDLING
+// UPDATE PROJECT
 // ==============================
 exports.updateProject = async (req, res) => {
   try {
@@ -145,9 +152,17 @@ exports.updateProject = async (req, res) => {
     console.log("Update data:", data);
     console.log("Uploaded files:", req.files);
 
-    // ================= LOCATION - STORE AS STRING =================
-    if (data.location && typeof data.location === 'object') {
-      data.location = JSON.stringify(data.location);
+    // ================= LOCATION - HANDLE AS SEPARATE FIELDS =================
+    if (data.location !== undefined) {
+      data.location = data.location;
+    }
+    
+    // Handle latitude and longitude
+    if (data.latitude !== undefined) {
+      data.latitude = parseFloat(data.latitude);
+    }
+    if (data.longitude !== undefined) {
+      data.longitude = parseFloat(data.longitude);
     }
 
     // Handle numeric fields with proper conversion
@@ -207,6 +222,8 @@ exports.updateProject = async (req, res) => {
     // Update other fields
     if (data.projectName !== undefined) project.projectName = data.projectName;
     if (data.location !== undefined) project.location = data.location;
+    if (data.latitude !== undefined) project.latitude = data.latitude;
+    if (data.longitude !== undefined) project.longitude = data.longitude;
     if (data.price !== undefined) project.price = data.price;
     if (data.status !== undefined) project.status = data.status;
     if (data.description !== undefined) project.description = data.description;
@@ -216,12 +233,9 @@ exports.updateProject = async (req, res) => {
       project.amenities = data.amenities;
     }
 
-    // ============ FIXED: HANDLE IMAGES PROPERLY ============
-    
-    // Check if we should replace images or append
+    // ============ HANDLE IMAGES ============
     const shouldReplaceImages = data.replaceImages === 'true' || data.replaceImages === true;
     
-    // Handle new images
     if (req.files?.images) {
       const newImages = req.files.images.map((file) => ({
         url: `/uploads/projects/${file.filename}`,
@@ -243,25 +257,17 @@ exports.updateProject = async (req, res) => {
             }
           });
         }
-        // Replace with new images
         project.images = newImages;
-        console.log(`Replaced images with ${newImages.length} new images`);
       } else {
-        // Append to existing images
         project.images = [...(project.images || []), ...newImages];
-        console.log(`Appended ${newImages.length} images, total now: ${project.images.length}`);
       }
     }
 
-    // ============ FIXED: HANDLE FLOOR PLANS PROPERLY ============
-    
-    // Check if we should replace floor plans or append
+    // ============ HANDLE FLOOR PLANS ============
     const shouldReplaceFloorPlans = data.replaceFloorPlans === 'true' || data.replaceFloorPlans === true;
     
-    // Handle new floor plans
     if (req.files?.floorPlans) {
       const newFloorPlans = req.files.floorPlans.map((file, index) => {
-        // Get the next index number for title
         const nextIndex = (project.floorPlans?.length || 0) + index + 1;
         return {
           title: data.floorPlanTitles?.[index] || `Floor Plan ${nextIndex}`,
@@ -285,89 +291,66 @@ exports.updateProject = async (req, res) => {
             }
           });
         }
-        // Replace with new floor plans
         project.floorPlans = newFloorPlans;
-        console.log(`Replaced floor plans with ${newFloorPlans.length} new floor plans`);
       } else {
-        // Append to existing floor plans
         project.floorPlans = [...(project.floorPlans || []), ...newFloorPlans];
-        console.log(`Appended ${newFloorPlans.length} floor plans, total now: ${project.floorPlans.length}`);
       }
     }
 
     // ============ HANDLE IMAGE DELETIONS ============
-    
-    // Check if we need to delete specific images
     if (data.deleteImages) {
       try {
         const imagesToDelete = Array.isArray(data.deleteImages) 
           ? data.deleteImages 
           : [data.deleteImages];
         
-        console.log(`Request to delete ${imagesToDelete.length} specific images`);
-        
-        // Filter out images to keep
         project.images = project.images.filter(image => {
           const shouldDelete = imagesToDelete.includes(image.publicId) || 
                               imagesToDelete.includes(image._id?.toString());
           
           if (shouldDelete) {
-            // Delete the file
             const filePath = path.join(__dirname, "..", image.url);
             if (fs.existsSync(filePath)) {
               fs.unlinkSync(filePath);
-              console.log(`Deleted specific image: ${filePath}`);
             }
           }
           
           return !shouldDelete;
         });
-        
-        console.log(`Remaining images: ${project.images.length}`);
       } catch (deleteError) {
         console.error("Error deleting specific images:", deleteError);
       }
     }
 
-    // Check if we need to delete specific floor plans
+    // ============ HANDLE FLOOR PLAN DELETIONS ============
     if (data.deleteFloorPlans) {
       try {
         const floorPlansToDelete = Array.isArray(data.deleteFloorPlans) 
           ? data.deleteFloorPlans 
           : [data.deleteFloorPlans];
         
-        console.log(`Request to delete ${floorPlansToDelete.length} specific floor plans`);
-        
-        // Filter out floor plans to keep
         project.floorPlans = project.floorPlans.filter(plan => {
           const shouldDelete = floorPlansToDelete.includes(plan.publicId) || 
                               floorPlansToDelete.includes(plan._id?.toString());
           
           if (shouldDelete) {
-            // Delete the file
             const filePath = path.join(__dirname, "..", plan.url);
             if (fs.existsSync(filePath)) {
               fs.unlinkSync(filePath);
-              console.log(`Deleted specific floor plan: ${filePath}`);
             }
           }
           
           return !shouldDelete;
         });
-        
-        console.log(`Remaining floor plans: ${project.floorPlans.length}`);
       } catch (deleteError) {
         console.error("Error deleting specific floor plans:", deleteError);
       }
     }
 
     // ============ RECALCULATE HOUSE NUMBERS ============
-    
-    // Force recalculation of totalHouse and houseNumbers
     if (project.projectType === "flat") {
       project.totalHouse = (project.totalWings || 0) * (project.totalFloors || 0) * (project.perFloorHouse || 0);
       
-      // Regenerate house numbers for flats
       const houses = [];
       for (let w = 0; w < project.totalWings; w++) {
         const wing = String.fromCharCode(65 + w);
@@ -379,25 +362,19 @@ exports.updateProject = async (req, res) => {
       }
       project.houseNumbers = houses;
     } else {
-      // For banglow and row-house
       project.totalHouse = project.totalPlots || 0;
       
-      // Generate house numbers from 01 to totalPlots
       const houses = [];
       for (let i = 1; i <= project.totalPlots; i++) {
         houses.push(String(i).padStart(2, "0"));
       }
       project.houseNumbers = houses;
-      
-      console.log("Generated house numbers count:", houses.length);
     }
 
     // Save the project
     await project.save();
     
     console.log("Project updated successfully with ID:", project.id);
-    console.log("Final images count:", project.images?.length || 0);
-    console.log("Final floor plans count:", project.floorPlans?.length || 0);
 
     res.json({
       success: true,

@@ -13,8 +13,10 @@ const LilySchema = new mongoose.Schema(
     status: { type: String, default: "active" },
     description: String,
 
-    // Location - SIMPLE STRING
-    location: { type: String },
+    // Location - STORED AS SEPARATE FIELDS
+    location: { type: String }, // Address text
+    latitude: { type: Number }, // Latitude coordinate
+    longitude: { type: Number }, // Longitude coordinate
     
     // Project configuration
     totalWings: { type: Number, default: 0 },
