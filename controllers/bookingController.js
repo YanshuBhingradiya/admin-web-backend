@@ -15,35 +15,61 @@ exports.createBooking = async (req, res) => {
       advancePayment = 0,
       emiMonths,
       monthlyEmi,
-      bookingDate,
     } = req.body;
 
-    if (!projectId || !houseNumber) {
+    /* ================= VALIDATION ================= */
+
+    if (!projectId || !houseNumber || !customerName || !mobileNo) {
       return res.status(400).json({
         success: false,
-        message: "Project and house number required",
+        message: "All required fields must be filled",
       });
     }
 
-    const totalAmount = Number(totalSqFeet) * Number(pricePerSqFeet);
+    if (
+      totalSqFeet === undefined ||
+      pricePerSqFeet === undefined
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Total sq.ft and price per sq.ft are required",
+      });
+    }
+
+    /* ================= CONVERT TO NUMBERS ================= */
+
+    const sqFt = Number(totalSqFeet);
+    const price = Number(pricePerSqFeet);
     const advance = Number(advancePayment) || 0;
+
+    if (isNaN(sqFt) || isNaN(price)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid number format",
+      });
+    }
+
+    /* ================= CALCULATE TOTAL ================= */
+
+    const totalAmount = sqFt * price;
 
     if (advance > totalAmount) {
       return res.status(400).json({
         success: false,
-        message: "Advance cannot exceed total",
+        message: "Advance amount cannot be greater than total amount",
       });
     }
 
     const pendingAmount = totalAmount - advance;
 
-    /* Check house availability */
+    /* ================= CHECK HOUSE STATUS ================= */
+
     let house = await HouseListing.findOne({ projectId, houseNumber });
 
     if (house && house.status !== "available") {
       return res.status(400).json({
         success: false,
-        message: "House already booked",
+        message: "House already booked or sold",
       });
     }
 
@@ -54,14 +80,15 @@ exports.createBooking = async (req, res) => {
     house.status = "booked";
     await house.save();
 
-    /* EMI */
+    /* ================= EMI SCHEDULE ================= */
+
     let emiSchedule = [];
 
     if (paymentType === "emi") {
       if (!emiMonths || !monthlyEmi) {
         return res.status(400).json({
           success: false,
-          message: "EMI details required",
+          message: "EMI months and monthly amount are required",
         });
       }
 
@@ -77,23 +104,26 @@ exports.createBooking = async (req, res) => {
           status: "pending",
         });
 
-        remaining -= monthlyEmi;
+        remaining -= Number(monthlyEmi);
       }
     }
+
+    /* ================= CREATE BOOKING ================= */
 
     const booking = await Booking.create({
       projectId,
       houseNumber,
       customerName,
       mobileNo,
-      totalSqFeet,
-      pricePerSqFeet,
+      totalSqFeet: sqFt,
+      pricePerSqFeet: price,
+      totalAmount,
       advancePayment: advance,
+      pendingAmount,
       paymentType,
       emiMonths: paymentType === "emi" ? emiMonths : 0,
       monthlyEmi: paymentType === "emi" ? monthlyEmi : 0,
       emiSchedule,
-      bookingDate,
     });
 
     res.status(201).json({
@@ -101,15 +131,15 @@ exports.createBooking = async (req, res) => {
       message: "Booking created successfully",
       data: booking,
     });
-  }catch (err) {
-  console.error("BOOKING ERROR FULL:", err);   // 👈 IMPORTANT
-  res.status(500).json({
-    success: false,
-    message: err.message,
-  });
-}
-};
+  } catch (err) {
+    console.error("Create Booking Error:", err);
 
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
 
 
 

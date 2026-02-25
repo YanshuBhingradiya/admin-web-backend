@@ -1,7 +1,22 @@
 const mongoose = require("mongoose");
 
-const PaymentSchema = new mongoose.Schema(
+const BookingHistorySchema = new mongoose.Schema(
   {
+    bookingId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Booking",
+      required: true,
+    },
+
+    // projectName: { type: String, required: true }, // store text
+
+    customerName: { type: String, required: true },
+    houseNumber: { type: String, required: true },
+
+    totalAmount: { type: Number, required: true },
+    advancePayment: { type: Number, required: true },
+    pendingAmount: { type: Number, required: true },
+
     amountReceived: { type: Number, required: true },
 
     paymentMethod: {
@@ -28,27 +43,6 @@ const PaymentSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const BookingHistorySchema = new mongoose.Schema(
-  {
-    bookingId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Booking",
-      required: true,
-      unique: true, // 🔥 ONE RECORD PER BOOKING
-    },
-
-    projectName: String,
-    customerName: String,
-    houseNumber: String,
-
-    totalAmount: { type: Number, required: true },
-    advancePayment: { type: Number, required: true },
-
-    pendingAmount: { type: Number, required: true },
-
-    payments: [PaymentSchema], // 🔥 ARRAY OF PAYMENTS
-  },
-  { timestamps: true }
-);
+BookingHistorySchema.index({ paymentReceivedDate: 1 });
 
 module.exports = mongoose.model("BookingHistory", BookingHistorySchema);

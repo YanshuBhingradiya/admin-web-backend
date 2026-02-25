@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+
 const {
   addPayment,
   getPaymentHistory,
@@ -9,10 +10,10 @@ const {
 /* Add payment */
 router.post("/add-payment", addPayment);
 
-/* Get payment history (single record with array) */
+/* Get all / filter history */
 router.get("/", getPaymentHistory);
 
-/* Get booking */
+/* Get single booking */
 router.get("/:id", getBookingById);
 
 module.exports = router;
