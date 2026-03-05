@@ -100,17 +100,17 @@ exports.getPaymentHistory = async (req, res) => {
     }
 
     // ✅ Custom sort
-    history.payments.sort((a, b) => {
-      // Advance always first
-      if (a.paymentMethod === "advance") return -1;
-      if (b.paymentMethod === "advance") return 1;
+    // history.payments.sort((a, b) => {
+    //   // Advance always first
+    //   if (a.paymentMethod === "advance") return -1;
+    //   if (b.paymentMethod === "advance") return 1;
 
-      // Then sort by date ASC
-      return (
-        new Date(a.paymentReceivedDate) -
-        new Date(b.paymentReceivedDate)
-      );
-    });
+    //   // Then sort by date ASC
+    //   return (
+    //     new Date(a.paymentReceivedDate) -
+    //     new Date(b.paymentReceivedDate)
+    //   );
+    // });
 
     res.json({ data: history });
   } catch (error) {
