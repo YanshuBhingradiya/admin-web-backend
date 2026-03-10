@@ -11,6 +11,7 @@ const bookingHistoryRoutes = require("./routes/bookingHistoryRoutes");
 const testimonialRoutes = require("./routes/testimonialRoutes");
 const faqRoutes = require("./routes/faqRoutes");
 
+
 const app = express();
 
 /* ================= MIDDLEWARE ================= */
@@ -51,9 +52,13 @@ connectDB().then(() => {
   app.use("/api/testimonials", testimonialRoutes);
   app.use("/api/faqs", faqRoutes);
 
+
   // Contact Routes
   const contactRoute = require("./routes/contact");
   app.use("/api/contact", contactRoute);
+
+  const blogRoutes = require("./routes/blogRoute");
+  app.use("/api/blogs", blogRoutes);
 
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () =>
