@@ -3,6 +3,7 @@ const HouseListing = require("../models/house");
 const Booking = require("../models/booking");
 const fs = require("fs");
 const path = require("path");
+const { log } = require("console");
 
 // ==============================
 // CREATE PROJECT
@@ -29,11 +30,12 @@ exports.createProject = async (req, res) => {
     }
 
     // ================= SET DEFAULT VALUES =================
-    data.totalWings = data.totalWings ? Number(data.totalWings) : 0;
-    data.totalFloors = data.totalFloors ? Number(data.totalFloors) : 0;
-    data.perFloorHouse = data.perFloorHouse ? Number(data.perFloorHouse) : 0;
-    data.totalPlots = data.totalPlots ? Number(data.totalPlots) : 0;
-    data.price = data.price ? Number(data.price) : 0;
+    data.totalWings = data.totalWings ? Number(data.totalWings) : "";
+    data.totalFloors = data.totalFloors ? Number(data.totalFloors) : "";
+    data.perFloorHouse = data.perFloorHouse ? Number(data.perFloorHouse) : "";
+    data.totalPlots = data.totalPlots ? Number(data.totalPlots) : "";
+    data.bhkTypes = data.bhkTypes ? Number(data.bhkTypes) : "";
+    data.price = data.price ? Number(data.price) : "";
     data.status = data.status || "active";
 
     // ================= HANDLE AMENITIES =================
@@ -44,6 +46,11 @@ exports.createProject = async (req, res) => {
         data.amenities = req.body.amenities.split(',').map(a => a.trim()).filter(a => a);
       }
     }
+
+    // Handle BHK
+// if (data.bhkTypes !== undefined) {
+//   project.bhkTypes = Number(data.bhkTypes);
+// }
 
     // ================= HANDLE IMAGES =================
     if (req.files?.images) {
@@ -76,6 +83,11 @@ exports.createProject = async (req, res) => {
     console.log("Location:", project.location);
     console.log("Latitude:", project.latitude);
     console.log("Longitude:", project.longitude);
+    log("Total Wings:", project.totalWings);
+    log("Total Floors:", project.totalFloors);
+    log("Per Floor House:", project.perFloorHouse);
+    log("Total Plots:", project.totalPlots);
+    log("BHK Types:", project.bhkTypes);
 
     res.status(201).json({
       success: true,
@@ -96,27 +108,14 @@ exports.createProject = async (req, res) => {
 // ==============================
 // GET ALL PROJECTS
 // ==============================
-// ==============================
-// GET ALL PROJECTS (WITH STATUS FILTER)
-// ==============================
 exports.getProjects = async (req, res) => {
   try {
-    const { type } = req.query;
-
-    let filter = {};
-
-    // Filter by project type
-    if (type) {
-      filter.projectType = type;
-    }
-
-    const projects = await Lily.find(filter).sort({ id: -1 });
+    const projects = await Lily.find().sort({ id: -1 });
 
     res.json({
       success: true,
       data: projects
     });
-
   } catch (err) {
     console.error("GET PROJECTS ERROR:", err);
     res.status(500).json({
@@ -188,6 +187,8 @@ exports.updateProject = async (req, res) => {
     }
     if (data.price !== undefined) data.price = Number(data.price);
 
+    if (data.bhkTypes !== undefined) data.bhkTypes = Number(data.bhkTypes);
+
     // Handle amenities
     if (data.amenities) {
       if (Array.isArray(data.amenities)) {
@@ -240,6 +241,7 @@ exports.updateProject = async (req, res) => {
     if (data.price !== undefined) project.price = data.price;
     if (data.status !== undefined) project.status = data.status;
     if (data.description !== undefined) project.description = data.description;
+    if (data.bhkTypes !== undefined) project.bhkTypes = data.bhkTypes;
     
     // Update amenities
     if (data.amenities !== undefined) {
@@ -291,6 +293,7 @@ exports.updateProject = async (req, res) => {
       
       console.log(`Processing ${newFloorPlans.length} new floor plans`);
       console.log("Replace floor plans flag:", shouldReplaceFloorPlans);
+      console.log("bhks value:", data.bhkTypes);
       
       if (shouldReplaceFloorPlans) {
         // Delete old floor plans from filesystem

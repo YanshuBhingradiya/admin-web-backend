@@ -1,5 +1,7 @@
 const Booking = require("../models/booking");
 const HouseListing = require("../models/house");
+const Inventory = require("../models/inventory");
+const Lily = require("../models/home");
 
 /* ================= CREATE BOOKING ================= */
 exports.createBooking = async (req, res) => {
@@ -12,64 +14,38 @@ exports.createBooking = async (req, res) => {
       paymentType,
       totalSqFeet,
       pricePerSqFeet,
-      advancePayment = 0,
+      advancePayment,
       emiMonths,
       monthlyEmi,
+      bookingDate,
     } = req.body;
 
-    /* ================= VALIDATION ================= */
-
-    if (!projectId || !houseNumber || !customerName || !mobileNo) {
+    if (!projectId || !houseNumber) {
       return res.status(400).json({
         success: false,
-        message: "All required fields must be filled",
+        message: "Project and house number required",
       });
     }
 
-    if (
-      totalSqFeet === undefined ||
-      pricePerSqFeet === undefined
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Total sq.ft and price per sq.ft are required",
-      });
-    }
-
-    /* ================= CONVERT TO NUMBERS ================= */
-
-    const sqFt = Number(totalSqFeet);
-    const price = Number(pricePerSqFeet);
-    const advance = Number(advancePayment) || 0;
-
-    if (isNaN(sqFt) || isNaN(price)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid number format",
-      });
-    }
-
-    /* ================= CALCULATE TOTAL ================= */
-
-    const totalAmount = sqFt * price;
+    const totalAmount = Number(totalSqFeet) * Number(pricePerSqFeet);
+    const advance = Number(advancePayment);
 
     if (advance > totalAmount) {
       return res.status(400).json({
         success: false,
-        message: "Advance amount cannot be greater than total amount",
+        message: "Advance cannot exceed total",
       });
     }
 
     const pendingAmount = totalAmount - advance;
 
-    /* ================= CHECK HOUSE STATUS ================= */
-
+    /* Check house availability */
     let house = await HouseListing.findOne({ projectId, houseNumber });
 
     if (house && house.status !== "available") {
       return res.status(400).json({
         success: false,
-        message: "House already booked or sold",
+        message: "House already booked",
       });
     }
 
@@ -80,15 +56,14 @@ exports.createBooking = async (req, res) => {
     house.status = "booked";
     await house.save();
 
-    /* ================= EMI SCHEDULE ================= */
-
+    /* EMI */
     let emiSchedule = [];
 
     if (paymentType === "emi") {
       if (!emiMonths || !monthlyEmi) {
         return res.status(400).json({
           success: false,
-          message: "EMI months and monthly amount are required",
+          message: "EMI details required",
         });
       }
 
@@ -104,45 +79,67 @@ exports.createBooking = async (req, res) => {
           status: "pending",
         });
 
-        remaining -= Number(monthlyEmi);
+        remaining -= monthlyEmi;
       }
     }
-
-    /* ================= CREATE BOOKING ================= */
 
     const booking = await Booking.create({
       projectId,
       houseNumber,
       customerName,
       mobileNo,
-      totalSqFeet: sqFt,
-      pricePerSqFeet: price,
-      totalAmount,
+      totalSqFeet,
+      pricePerSqFeet,
       advancePayment: advance,
-      pendingAmount,
       paymentType,
-      emiMonths: paymentType === "emi" ? emiMonths : 0,
-      monthlyEmi: paymentType === "emi" ? monthlyEmi : 0,
-      emiSchedule,
+      bookingDate,
     });
+
+    /* ================= UPDATE INVENTORY ================= */
+
+const project = await Lily.findOne({ id: projectId });
+
+let inventory = await Inventory.findOne({ projectId });
+
+if (!inventory) {
+  inventory = new Inventory({
+    projectId: projectId,
+    projectName: project.projectName,
+    totalHouse: project.totalHouse,
+    soldHouse: 0,
+    availableHouse: project.totalHouse,
+    totalSellingPrice: project.totalHouse * (project.price || 0),
+    soldAmount: 0,
+    remainingAmount: project.totalHouse * (project.price || 0)
+  });
+}
+
+/* update values */
+
+inventory.soldHouse += 1;
+
+inventory.availableHouse = inventory.totalHouse - inventory.soldHouse;
+
+inventory.soldAmount += totalAmount;
+
+inventory.remainingAmount =
+  inventory.totalSellingPrice - inventory.soldAmount;
+
+await inventory.save();
 
     res.status(201).json({
       success: true,
       message: "Booking created successfully",
       data: booking,
     });
-  } catch (err) {
-    console.error("Create Booking Error:", err);
-
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
-  }
+  }catch (err) {
+  console.error("BOOKING ERROR FULL:", err);   // 👈 IMPORTANT
+  res.status(500).json({
+    success: false,
+    message: err.message,
+  });
+}
 };
-
-
-
 
 /* ================= GET ALL BOOKINGS ================= */
 exports.getAllBookings = async (req, res) => {
@@ -253,5 +250,3 @@ exports.payCashRemaining = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
-
-

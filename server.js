@@ -10,6 +10,8 @@ const bookingRoutes = require("./routes/bookingRoutes");
 const bookingHistoryRoutes = require("./routes/bookingHistoryRoutes");
 const testimonialRoutes = require("./routes/testimonialRoutes");
 const faqRoutes = require("./routes/faqRoutes");
+const adminRoutes = require("./routes/adminRoutes");
+const inventoryRoutes = require("./routes/inventoryRoutes");
 
 
 const app = express();
@@ -51,6 +53,8 @@ connectDB().then(() => {
   app.use("/api/payment-history", bookingHistoryRoutes);
   app.use("/api/testimonials", testimonialRoutes);
   app.use("/api/faqs", faqRoutes);
+  app.use("/api/admin", adminRoutes);
+  app.use("/api/inventory", inventoryRoutes);
 
 
   // Contact Routes
