@@ -30,7 +30,7 @@ const BookingSchema = new mongoose.Schema(
   
 
     totalAmount: { type: Number },
-pendingAmount: { type: Number },
+    pendingAmount: { type: Number },
 
     paymentType: {
       type: String,

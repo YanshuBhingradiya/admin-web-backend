@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const Counter = require("./counter");
+// const Counter = require("./counter");
 
 const LilySchema = new mongoose.Schema(
   {
@@ -53,24 +53,23 @@ const LilySchema = new mongoose.Schema(
 /* ================= PRE SAVE ================= */
 LilySchema.pre("save", async function (next) {
   try {
-    // Auto increment ID
+    // ✅ FIXED AUTO-INCREMENT
     if (!this.id) {
-      const counter = await Counter.findOneAndUpdate(
-        { model: "lily" },
-        { $inc: { count: 1 } },
-        { new: true, upsert: true }
-      );
-      this.id = counter.count;
+      const lastProject = await mongoose.model("Lily").findOne().sort({ id: -1 });
+
+      this.id = lastProject ? lastProject.id + 1 : 1;
     }
 
-    // Flat logic - generate house numbers
+    // ===== EXISTING LOGIC (UNCHANGED) =====
     if (this.projectType === "flat") {
-      // Calculate total houses
-      this.totalHouse = (this.totalWings || 0) * (this.totalFloors || 0) * (this.perFloorHouse || 0);
-      
+      this.totalHouse =
+        (this.totalWings || 0) *
+        (this.totalFloors || 0) *
+        (this.perFloorHouse || 0);
+
       const houses = [];
       for (let w = 0; w < this.totalWings; w++) {
-        const wing = String.fromCharCode(65 + w); // A, B, C, D...
+        const wing = String.fromCharCode(65 + w);
         for (let f = 1; f <= this.totalFloors; f++) {
           for (let h = 1; h <= this.perFloorHouse; h++) {
             houses.push(`${wing}-${f}${String(h).padStart(2, "0")}`);
@@ -78,16 +77,14 @@ LilySchema.pre("save", async function (next) {
         }
       }
       this.houseNumbers = houses;
-    }
-    // Banglow / Row-house logic
-    else {
+    } else {
       this.totalHouse = this.totalPlots || 0;
       this.houseNumbers = Array.from(
         { length: this.totalPlots || 0 },
         (_, i) => String(i + 1).padStart(2, "0")
       );
     }
-    
+
     next();
   } catch (error) {
     next(error);
