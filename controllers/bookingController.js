@@ -3,6 +3,7 @@ const HouseListing = require("../models/house");
 const Inventory = require("../models/inventory");
 const Lily = require("../models/home");
 
+
 /* ================= CREATE BOOKING ================= */
 exports.createBooking = async (req, res) => {
   try {
@@ -27,13 +28,49 @@ exports.createBooking = async (req, res) => {
       });
     }
 
+    if (!/^[0-9]{10}$/.test(mobileNo)) {
+      return res.status(400).json({
+        success: false,
+        message: "Mobile number must be exactly 10 digits",
+      });
+    }
+
+    if (customerName.length < 3) {
+      return res.status(400).json({
+        success: false,
+        message: "Customer name must be at least 3 characters",
+      });
+    }
+
+    if (Number(totalSqFeet) <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Total Sq.Ft must be greater than 0",
+      });
+    }
+
+    if (Number(pricePerSqFeet) <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Price per Sq.Ft must be greater than 0",
+      });
+    }
+
     const totalAmount = Number(totalSqFeet) * Number(pricePerSqFeet);
-    const advance = Number(advancePayment);
+    const advance = Number(advancePayment || 0);
+
+    /* ✅ REQUIRED BOOKING AMOUNT */
+    if (!advance || advance <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Booking amount is required and must be greater than 0",
+      });
+    }
 
     if (advance > totalAmount) {
       return res.status(400).json({
         success: false,
-        message: "Advance cannot exceed total",
+        message: "Advance cannot exceed total amount",
       });
     }
 

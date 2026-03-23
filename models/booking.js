@@ -19,15 +19,34 @@ const BookingSchema = new mongoose.Schema(
     projectId: { type: Number, required: true },
     houseNumber: { type: String, required: true },
 
-    customerName: { type: String, required: true },
-    mobileNo: { type: String, required: true },
+    customerName: { 
+      type: String, 
+      required: true,
+      minlength: [3, "Customer name must be at least 3 characters"]
+    },
 
-    totalSqFeet: { type: Number, required: true },
-    pricePerSqFeet: { type: Number, required: true },
+    mobileNo: { 
+      type: String, 
+      required: true,
+      match: [/^[0-9]{10}$/, "Mobile number must be exactly 10 digits"]
+    },
 
-  
-    advancePayment: { type: Number},
-  
+    totalSqFeet: { 
+      type: Number, 
+      required: true,
+      min: [1, "Total Sq.Ft must be greater than 0"]
+    },
+
+    pricePerSqFeet: { 
+      type: Number, 
+      required: true,
+      min: [1, "Price must be greater than 0"]
+    },
+
+    advancePayment: { 
+      type: Number,
+      min: [0, "Advance cannot be negative"]
+    },
 
     totalAmount: { type: Number },
     pendingAmount: { type: Number },
@@ -38,11 +57,22 @@ const BookingSchema = new mongoose.Schema(
       required: true,
     },
 
-    emiMonths: { type: Number},
-    monthlyEmi: { type: Number},
+    emiMonths: { 
+      type: Number,
+      min: [1, "EMI months must be at least 1"]
+    },
+
+    monthlyEmi: { 
+      type: Number,
+      min: [1, "Monthly EMI must be greater than 0"]
+    },
+
     emiSchedule: [EmiSchema],
 
-    bookingDate: { type: Date, default: Date.now },
+    bookingDate: { 
+      type: Date, 
+      default: Date.now 
+    },
   },
   { timestamps: true }
 );
